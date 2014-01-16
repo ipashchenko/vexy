@@ -1,8 +1,6 @@
 #!/usr/bin/python2
 # -*- coding: utf-8 -*-
 
-import sys
-sys.path.append('/home/ilya/Dropbox/vex/vex-1.0/')
 from vex import Vex
 from datetime import timedelta, datetime, tzinfo
 
