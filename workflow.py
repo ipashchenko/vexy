@@ -2,27 +2,17 @@
 # -*- coding: utf-8 -*-
 
 from vex import Vex
-from datetime import timedelta, datetime, tzinfo
+from datetime import timedelta, datetime
 
-
-class UTC(tzinfo):
-    """
-    Class that represents UTC (GMT0) time zone.
-    """
-
-    def utcoffset(self, datetime):
-        return timedelta(hours=0)
-
-    def dst(self, datetime):
-        return timedelta(0)
-
-    def tzname(self, datetime):
-        return 'UTC'
 
 if __name__ == '__main__':
 
-    utc = UTC()
     out = Vex('rk01ji.vex')
+
+    # Find experiment code and check it is one
+    assert(len(out['EXPER'].items()) == 1)
+    obscode = out['EXPER'].items()[0][0]
+
     scans = list()
     # Populate list of scan#
     for key in out['SCHED'].iterkeys():
@@ -33,6 +23,7 @@ if __name__ == '__main__':
     for scan in scans:
         mode = out['SCHED'][scan]['mode']
         start = out['SCHED'][scan]['start']
+        source = out['SCHED'][scan]['source']
 
         # Loop for each telescope in scan
         for tel in [tel[0] for tel in
@@ -79,14 +70,17 @@ if __name__ == '__main__':
                         #pol
                 result = list()
 
+                # Obscode is ``string``
+                obscode_str = obscode
                 # Scan number to ``int``
                 scan_int = int(scan[2:])
+                # source is ``string``
+                source_str = source
                 # Telescope is ``string``
                 tel_str = tel
                 # Starttime of scan to ``datetime``
                 fmt = '%Yy%jd%Hh%Mm%Ss'
                 start_dt = datetime.strptime(start, fmt)
-                start_dt = start_dt.replace(tzinfo=utc)
                 # Length of scan to timedelta
                 length_dt = timedelta(seconds=float(length.split()[0]))
                 # Channel # to ``int``
@@ -100,5 +94,6 @@ if __name__ == '__main__':
                 # Polarization is ``string``
                 pol_str = pol
 
-                print scan_int, tel_str, start_dt, length_dt, chan_int,\
-                    chan_frequency_fl, chan_LU_str, chan_BW_fl, pol_str
+                print obscode_str, source, tel_str, scan_int, start_dt,\
+                    length_dt, chan_frequency_fl, chan_BW_fl, chan_int,\
+                    chan_LU_str, pol_str
