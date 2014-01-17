@@ -3,11 +3,80 @@
 
 from vex import Vex
 from datetime import timedelta, datetime
+#from insert import insert
+import ftplib
 
 
-if __name__ == '__main__':
+def get_vex_for_exp(obscode, host=None, username=None, passwd=None,
+                    remote_dir='/schedule/grtsched'):
+    """
+    Function that fetches all vex-files from user-specified directories and
+    it's subdirectories.
+    """
 
-    out = Vex('rk01ji.vex')
+    def find_subdirs():
+        """
+        Function that returns subdirs of current directory.
+        """
+        dirs = list()
+
+        def _lambda(line):
+            if line[0] == 'd':
+                dirs.append(line.split()[-1])
+
+        ftp.dir('-d', _lambda)
+        try:
+            dirs.remove('.')
+            dirs.remove('..')
+        except ValueError:
+            pass
+        if not dirs:
+            print 'No sudirectories in ' + ftp.pwd()
+        return dirs
+
+    def get_vex_from_curdir():
+        """
+        Function that finds fex-files in current directory.
+        """
+        # Find vex-files in current directory and in it's subdirectories
+        cwd_files = ftp.nlst()
+        # Check for vex-files among cwd_files
+        vex_files = [file_ for file_ in cwd_files if '.vex' in file_]
+        if not vex_files:
+            print 'No vex-files in directory ' + ftp.pwd()
+        else:
+            # Get found vex-files
+            for file_ in vex_files:
+                print 'Downloading ' + file_
+                with open(file_, "wb") as vexfile:
+                    ftp.retrbinary('RETR %s' % file_, vexfile.write)
+
+    def get_vex_from_nested_dirs(directory):
+        ftp.cwd(directory)
+        curdir = directory
+        get_vex_from_curdir()
+        dirs = find_subdirs()
+        print 'Found subdirectories:'
+        print dirs
+        if not dirs:
+            pass
+        else:
+            for dir_ in dirs:
+                curdir = directory + '/' + dir_
+                print 'Go to ' + curdir
+                ftp.cwd(curdir)
+                get_vex_from_nested_dirs(curdir)
+
+    ftp = ftplib.FTP(host, username, passwd)
+    get_vex_from_nested_dirs(remote_dir)
+
+
+def parse_vex(fname):
+    """
+    Function that parses vex-files and returns data to be inserted to ra_db.
+    """
+
+    out = Vex(fname)
 
     # Find experiment code and check it is one
     assert(len(out['EXPER'].items()) == 1)
@@ -37,8 +106,8 @@ if __name__ == '__main__':
                           if freq[1] == tel][0]
             bbc = [bbcs[0] for bbcs in out['MODE'][mode].getall('BBC') if
                    bbcs[1] == tel][0]
-            IF = [res[0] for res in out['MODE'][mode].getall('IF') if res[1]
-                  == tel]
+            # IF = [res[0] for res in out['MODE'][mode].getall('IF') if res[1]
+            #       == tel]
             # Loop for each channel
             for chan in [chans_info[4] for chans_info in
                          out['FREQ'][freq_setup].getall('chan_def')]:
@@ -81,6 +150,7 @@ if __name__ == '__main__':
                 # Starttime of scan to ``datetime``
                 fmt = '%Yy%jd%Hh%Mm%Ss'
                 start_dt = datetime.strptime(start, fmt)
+                #start_str = start_dt.strftime('%Y-%m-%d %H:%M:%S')
                 # Length of scan to timedelta
                 length_dt = timedelta(seconds=float(length.split()[0]))
                 # Channel # to ``int``
@@ -94,6 +164,7 @@ if __name__ == '__main__':
                 # Polarization is ``string``
                 pol_str = pol
 
-                print obscode_str, source, tel_str, scan_int, start_dt,\
+                result = obscode_str, source_str, tel_str, scan_int, start_dt,\
                     length_dt, chan_frequency_fl, chan_BW_fl, chan_int,\
                     chan_LU_str, pol_str
+    return result
